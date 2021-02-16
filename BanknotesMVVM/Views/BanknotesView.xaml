@@ -1,0 +1,43 @@
+﻿<UserControl x:Class="BanknotesMVVM.Views.BanknotesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:BanknotesMVVM.Views"
+             xmlns:vm="clr-namespace:BanknotesMVVM.ViewModel"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    
+    <UserControl.Resources>
+        <vm:CashInVM x:Key="vm"/>
+    </UserControl.Resources>
+
+    <Grid DataContext="{StaticResource vm}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBox Grid.Column="0" Grid.Row="0" Margin="0,0,0,10"
+                 Text="{Binding EnteredValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <Button Grid.Column="1" Grid.Row="0" Content="Start Cash In"
+                Command="{Binding FillCommand}" CommandParameter="{Binding EnteredValue}" />
+        <ListView Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
+                  ItemsSource="{Binding Batch}" SelectedValue="{Binding SelectedNotes}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TotalAmount}" Margin="0,0,5,0" />
+                            <TextBlock Text="{Binding Currency.CurrencyName}"/>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</UserControl>
