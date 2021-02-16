@@ -35,3 +35,314 @@
 
 На последнем этапе – добавляются Helper-ы, которые выполняют запросы к сетевым ресурсам, устройствам и к базе данных.
 
+## Пример приложения BanknotesMVVM
+
+Начальное приложение следует сгенерировать, используя генератор кода по шаблонам из состава Microsoft Visual Studio. Параметры шаблона: XAML, Windows, Desktop. В качестве Runtime рекомендуется использовать .NET 5.0 – последнюю из доступных версий .NET.
+
+При разработке View, рекомендуется группировать связанные сущности в UserControl. Кажется разумным создать отдельную папку «Views», в которой размещать разработанные UserControl-ы. Создать UserControl рекомендуется посредством генератора компонентов приложения из состава Visual Studio.
+
+Статья: https://www.wpf-tutorial.com/usercontrols-and-customcontrols/creating-using-a-usercontrol/
+
+В соответствии с шаблоном проектирования MVVM, следует стремиться не добавлять какой-либо код в CS-файл. 
+
+## View
+
+Ниже приведён пример XAML-верстки:
+
+```xaml
+<UserControl x:Class="BanknotesMVVM.Views.BanknotesView" ...
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <TextBox Grid.Column="0" Grid.Row="0" Text="0" Margin="0,0,0,10" />
+        <Button Grid.Column="1" Grid.Row="0" Content="Start Cash In" />
+        <ListBox Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" />
+    </Grid>
+</UserControl>
+```
+
+Этот UserControl может быть включен в соответствующее окно. Например, в главное окно приложения:
+
+```xaml
+<Window x:Class="BanknotesMVVM.MainWindow" ...
+		xmlns:uc="clr-namespace:BanknotesMVVM.Views"
+		Title="MainWindow" Height="450" Width="800">
+	<Grid>
+		<uc:BanknotesView />
+	</Grid>
+</Window>
+```
+
+## ViewModel
+
+Рекомендуется создать в проекте папку «ViewModel» и внутри неё папку «Helpers». В первой папке будет находится реализация классов, относящихся к уровню ViewModel, а в дочерней папке «Helpers» - файлы, которых будет осуществляться доступ к базами данных, серверам, и других источникам данных.
+
+Для начала работы следует попробовать создать в папке «ViewModel» файл «CashInVM.cs» - класс, относящихся к уровню ViewModel, в котором хранится значение переменной EnteredValue. Пример реализации приведён ниже:
+
+```csharp
+using System.ComponentModel;
+namespace BanknotesMVVM.ViewModel {
+	class CashInVM : INotifyPropertyChanged	// Суффикс VM означает ViewModel
+	{
+		private string enteredValue;
+		public string EnteredValue {
+			get { return enteredValue; }
+			set {	// При изменении свойства, значение будет отправлено подписчикам
+				enteredValue = value;
+				OnPropertyChanged("EnteredValue");
+			}
+		}
+		public event PropertyChangedEventHandler PropertyChanged;
+		// Отправка изменённого значения подписчикам
+		private void OnPropertyChanged(string propertyName) {
+			PropertyChanged?.Invoke(this,
+				new PropertyChangedEventArgs(propertyName));
+		}
+	}
+}
+```
+
+Для того, чтобы связать строку ввода, определённую в XAML на уровне View, следует сначала добавить пространство имён ViewModel в XAML:
+
+```xaml
+<UserControl x:Class="BanknotesMVVM.Views.BanknotesView" ...
+             xmlns:vm="clr-namespace:BanknotesMVVM.ViewModel" ...>
+```
+
+Следующий шаг – мы определяем ресурс, которым является разработанный ранее класс «CashInVM.cs» и называем его «vm»:
+
+```xaml
+<UserControl.Resources>
+	<vm:CashInVM x:Key="vm"/>
+</UserControl.Resources>
+```
+
+Следующим шагом – необходимо указать контекст данных (DataContext) для конкретного подмножества XAML-элементов. Под контекстом данных подразумевается конкретный экземпляр класса, в котором находятся свойства, используемые для связывания (binding). Например, это можно сделать для Grid-а:
+
+```xaml
+<Grid DataContext="{StaticResource vm}">
+```
+
+После этого, мы можем использовать свойства класса CashInVM для операций связывания, например:
+
+```xaml
+<Grid DataContext="{StaticResource vm}">
+	<TextBox Text="{Binding EnteredValue, Mode=TwoWay}"/>
+```
+
+Цель всей приведённой выше конструкции состоит в том, что определено некоторое состояние (переменная), которое может быть использовано как входное значение для Helper-функций, а также, в это состояние можно будет разместить результат выполнения Helper-функций. Описание пользовательского интерфейса (Modal) является декларативным и не содержит программного кода на C#. Любые изменения свойства EnteredValue на уровне ViewModel (бизнес-логика) будут автоматические отображаться в органах управления на уровне Modal и не потребуются какие-либо дополнительные синхронизационные действия.
+
+## Добавление обработчиков команд
+
+Команды – это классы ViewModel, которые связаны с командными кнопками в XAML и реагируют на нажатие кнопок используя свойства ViewModel (см. EnteredValue) для запуска Helper-функций.
+
+Для реализации команд рекомендуется создать отдельную папку внутри «ViewModel» под названием «Commands».
+
+Пример реализации команды:
+
+```csharp
+using System;
+using System.Windows.Input;
+namespace BanknotesMVVM.ViewModel.Commands {
+	class FillCommand : ICommand	{
+		public CashInVM VM { get; set; }
+		public event EventHandler CanExecuteChanged;
+
+		// Сохраняем ссылку на ViewModel
+		public FillCommand(CashInVM vm) {
+			VM = vm;
+		}
+		// Определяем условия, при которых команда может быть выполнена
+		public bool CanExecute(object parameter)  {
+			return true;
+		}
+		// Делегируем выполнение команды во ViewModel
+		public void Execute(object parameter) {
+			VM.GenerateData();
+		}
+	}
+}
+```
+
+При создании экземпляра класса FillCommand ему нужно передать ссылку на главный экземпляр ViewModel – эту ссылку следует сохранить для обеспечения возможности проверки условий выполнения команды (CanExecute), а также непосредственно для выполнения команды (Execute).
+
+```csharp
+class CashInVM : INotifyPropertyChanged {
+	// Конструктор
+	public CashInVM() {
+		// Создаём экземпляр команды, чтобы его можно было
+		// безопасно использовать в XAML
+		FillCommand = new FillCommand(this);
+	}
+	// Команды
+	public FillCommand FillCommand { get; set; }
+	...
+	// Определяем действия, которые можно использовать в командах XAML
+	public void GenerateData()
+	{
+	}
+```
+  
+После того, как экземпляр команды создан в ViewModel, можно использовать её в XAML-коде View:
+
+```xaml
+<Button Grid.Column="1" Grid.Row="0" Content="Start Cash In"
+	Command="{Binding FillCommand}" />
+```
+
+Подтвердить работоспособность кода можно добавив следующий код в метод ViewModel GenerateData():
+
+```csharp
+public void GenerateData() {
+	Console.WriteLine($"Entered Value = {EnteredValue}");
+	EnteredValue = "";
+}
+```
+
+Дополнительно можно добавить код, который будет блокировать возможность выполнения команды по некоторым условиям, например, команду можно будет выполнять только в том, случае, если в строке редактирования (фактическое значение EnteredValue) будут введены какие-то данные. 
+
+Для этого сначала необходимо добавить в команду код подписки на событие CanExecuteChanged:
+
+```csharp
+class FillCommand : ICommand {
+	public event EventHandler CanExecuteChanged {
+		// Необходимо выполнить подписку на событие при добавлении
+		// и удалении элемента. Если этого не сделать, то CanExecute()
+		// не будет вызываться
+		add { CommandManager.RequerySuggested += value; }
+		remove { CommandManager.RequerySuggested -= value; }
+	}
+```
+
+Так же нужно добавить осмысленное условие для принятия решения о том, разрешать команду, или нет. Пример такого условия – не разрешать команду, если данные не были введены:
+
+```csharp
+public bool CanExecute(object parameter) {
+	if (parameter is String) {
+		// Разрешаем выполнить команду только в том случае, 
+		// если какие-то данные были введены
+		return ((parameter as String).Length != 0);
+	}
+	return false;
+}
+```
+
+Чтобы не возникло исключение, проверяемые значения следует передавать через параметр вызова в CanExecute(). Для этого следует соответствующим образом настроить XAML-команду:
+
+```xaml
+<Button Grid.Column="1" Grid.Row="0" Content="Start Cash In"
+	Command="{Binding FillCommand}" CommandParameter="{Binding EnteredValue}" />
+```
+
+Ещё одно важное замечание – в случае использования CanExecute(), рекомендуется обновлять значение свойства EnteredValue по событию PropertyChanged:
+
+```xaml
+<TextBox Grid.Column="0" Grid.Row="0" Margin="0,0,0,10"
+	 Text="{Binding EnteredValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+```
+
+Как результат, кнопка «Start Cash In» будет заблокирована если в строке редактирования текст не введён и разрешена, если какой-либо текст введён.
+
+Целью приведённых выше действий является обеспечение декларативного описания пользовательского интерфейса (View) и модели (Model), т.е. описания элементов из которых они состоят (наборы полей), а не алгоритмов, которые позволяют достичь поставленных результатов. В свою очередь, ModelView разделяется на несколько слабо связанных классов:
+
+*	Интерфейсы команд, которые проверяют условия возможности выполнения команды
+*	Helper-функции, которые обращаются к внешним серверам, устройствам и базам данных
+*	Связующий слой, реализующий бизнес-логику
+
+Разделение приложения на слабое связанные компоненты позволяет упростить решение задачи в целом, повысить степень повторного использования компонентов и легче разделять задачу по разным исполнителям.
+
+## The ObservableCollection
+
+Класс ObservableCollection<T> является списком, который учитывает внесение изменений. Внесение изменений связано с binding-ом. По интерфейсу использования этот класс очень похож на List<T>.
+  
+Этот класс имеет смысл использовать в ситуациях, когда следует обрабатывать добавление, или удаление элементов списка.
+
+Предположим, что при нажатии на кнопку «Start Cash In» мы отправили команду счётчику на пересчёт наличных и через некоторое время счётчик сообщил нам результат. Реализацию протокола взаимодействия со счётчиком следовало бы реализовать в отдельном Helper-классе в рамках ViewModal. Функцию выполнения операции CashIn следовало бы сделать асинхронной (чтобы обеспечить отзывчивость системы и улучшить утилизацию вычислительных ресурсов системы). Предположим, что результатом работы является список принятых наличных в разбивке по номиналам.
+
+Предположим, что ранее мы уже разработали модель, в которой определён класс Notes с несколькими атрибутами: номинал купюры, количество купюр в пачке и имя валюты.
+Для хранения результатов пересчёта следует использовать ObservableCollection<Notes>, т.е. фактически, список экземпляров класса Notes, размещённые в контейнере, похожем на List, но поддерживающим уведомление подписчиков об изменении содержимого контейнера.
+  
+В ViewModel следует добавить контейнер соответствующего типа и проинициализировать его в конструкторе:
+
+```csharp
+class CashInVM : INotifyPropertyChanged {
+	public CashInVM() { ...
+		Batch = new ObservableCollection<Notes>();
+	}
+	// Результаты выполнения команд пользователя
+	public ObservableCollection<Notes> Batch { get; set; }
+```
+
+Критически важным является сохранение экземпляра коллекции. Мы не можем присвоить контейнеру Batch новое экземпляр без потери связи с подписчиками! Соответственно, изменение содержимого контейнера после выполнения очередной операции должно выполняться по следующей схеме:
+
+```csharp
+public void GenerateData() {
+	// Сбрасываем предыдущий результат выполнения операции
+	Batch.Clear();
+	// Параметры вызова: номинал, количество, код валюты...
+	// Вместо имени валюты выводим текст из строки ввода
+	Batch.Add(new Models.Notes(50, 4, 810, EnteredValue));
+	Batch.Add(new Models.Notes(100, 13, 810, EnteredValue));
+	Batch.Add(new Models.Notes(200, 1, 810, EnteredValue));
+	// Сбрасываем содержимое строки редактирования
+	EnteredValue = "";
+}
+```
+
+Следующим действием следует создать во View список для отображения результатов и описать шаблон оформления отдельной записи:
+
+```xaml
+<ListView Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
+		  ItemsSource="{Binding Batch}" SelectedValue="{Binding SelectedNotes}">
+	<ListView.ItemTemplate>
+		<DataTemplate>
+			<Grid>
+				<StackPanel Orientation="Horizontal">
+					<TextBlock Text="{Binding TotalAmount}" Margin="0,0,5,0" />
+					<TextBlock Text="{Binding Currency.CurrencyName}"/>
+				</StackPanel>
+			</Grid>
+		</DataTemplate>
+	</ListView.ItemTemplate>
+</ListView>
+```
+
+В атрибуте ItemsSource мы указываем имя контейнера Batch из ViewModel. Поскольку ListView находится внутри контекста данных CashInVM, то контейнер Batch будет доступен. См.:
+
+```csharp
+<Grid DataContext="{StaticResource vm}">
+```
+  
+В определении шаблона описания записи (см. DataTemplate) мы выполняем связывание с полями экземпляра класса Notes, которые хранятся в контейнере Batch.
+
+В приведённом выше примере используется ещё один атрибут – SelectedValue, который позволяет сохранять выбранный пользователем элемент в списке. Для того, чтобы код работал, нам потребуется добавить во ViewModel дополнительное свойство:
+
+```csharp
+class CashInVM : INotifyPropertyChanged { …
+	private Notes selectedNotes;
+	public Notes SelectedNotes {
+		get { return selectedNotes; }
+		set {
+			selectedNotes = value;
+			OnPropertyChanged("SelectedNotes");
+		}
+	}
+```
+
+# Резюмируя
+
+Применение шаблона проектирования MVVM позволяет разделить код приложения на множество слабосвязанных компонентов с чётко определёнными зонами ответственности:
+
+*	View отвечает за описание пользовательского интерфейса и не содержит никакой бизнес-логики
+*	Model – определяет структуру получаемых из разных источников данных
+*	Helpers – вспомогательные классы, которые реализуют взаимодействие с конкретными источниками данных (в том числе, с аппаратными устройствами)
+*	ViewModel – связующий уровень, который хранит состояние приложения и выполняет некоторую бизнес-логику, например, в ответ на некоторое действие пользователя выполняет запрос во внешнюю систему и передаёт полученные данные во View
+
+Важно заметить, что в приложении может быть не ограниченное количество View, Models, Helpers и ViewModels.
