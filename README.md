@@ -353,3 +353,84 @@ class CashInVM : INotifyPropertyChanged { …
 
 [Matanit: Команды и взаимодействие с пользователем в MVVM. 2021](https://metanit.com/sharp/xamarin/4.3.php)
 [Habr: MVVM: полное понимание (+WPF). 2017](https://habr.com/ru/post/338518/)
+	
+В 2016 году на Metanit вышла статья [Команды в MVVM](https://metanit.com/sharp/wpf/22.3.php). Предлагаемое в статье решение предлагает использовать специализированный класс **RelayCommand** (командный переключатель), который реализует поведение методов CanExecute() и Execute(), а также обработчика событий CanExecuteChanged(). Реализация класса следующая:
+	
+``` csharp
+namespace MVVM
+{
+    public class RelayCommand : ICommand
+    {
+        private Action<object> execute;
+        private Func<object, bool> canExecute;
+ 
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
+ 
+        public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
+        {
+            this.execute = execute;
+            this.canExecute = canExecute;
+        }
+ 
+        public bool CanExecute(object parameter)
+        {
+            return this.canExecute == null || this.canExecute(parameter);
+        }
+ 
+        public void Execute(object parameter)
+        {
+            this.execute(parameter);
+        }
+    }
+}
+```
+
+Этот класс используется в реализации ViewModel и позволяет обеспечить доступ из реализации функтора, отрабатывающего команду доступ к атрибутам ViewModal. Например:
+	
+``` csharp
+public class ApplicationViewModel : INotifyPropertyChanged
+{
+	private Notes selectedNotes;
+	public ObservableCollection<Notes> Notes { get; set; }
+
+	private RelayCommand addCommand;
+	public RelayCommand AddCommand
+	{
+		get
+		{
+			return addCommand ??
+			  (addCommand = new RelayCommand(obj =>
+			  {
+				  Notes Notes = new Notes();
+				  Notes.Insert(0, Notes);
+			  }));
+		}
+	}
+```
+
+В приведённом выше примере, getter внутреннего класса AddCommand имеет доступ к коллекции Notes.
+	
+В простейшем случае, вариант от Metanit-а и приведённый в данном репозитации результат приводят к одинаковому результату. На мой взгляд, вариант с Metanit-а менее гибкий, т.к. реализовать уникальное поведение CanExecute(), Execute() и CanExecuteChanged() нельзя - это поведение жёстко «забито гвоздями» в реализации RelayCommand. Например, если потребуется сделать команду доступной по условию, то в варианте от Metanit изменить поведение поведение в CanExecute() нельзя, т.к. оно общее для всех команд. Потребуется передавать свойство enabled/disabled через дополнительный атрибут XAML-элемента (см. CommandParameter):
+
+```csharp
+<Button Grid.Column="1" Grid.Row="0" Content="Start Cash In" Command="{Binding FillCommand}" CommandParameter="{Binding EnteredValue}" />
+```
+	
+В C# коде значение атрибута передаётся через parameter: 
+	
+```csharp
+public bool CanExecute(object parameter)
+{
+        return this.canExecute == null || this.canExecute(parameter);
+}
+```
+
+Фактически, во ViewModel должен быть определен атрибут (один), который будет принимать логическое значение (true/false). В большинстве случаев этого хватит для реализации требований заказчиков, но когда не хватит, потребуется создавать вычисляемое свойство.
+
+Резюмируя – в простейшем случае, решение от Метанита будет работать, но также будет провоцировать создание костылей, которые нужно будет делать очень аккуратно. По сути, разработчики примера с Метанита заявили, что создание отдельных методов CanExecute(), Execute() и CanExecuteChanged() не нужно, можно обойтись только одним функтором. Это смелое заявление, т.е. репутация Metanit не такого же порядка, как репутация Microsoft.
+	
+И ещё одно замечание – чтобы полноценно использовать решение Metanit нужно весьма хорошо знать WPF, в частности, понимать, зачем нужен атрибут CommandParameter.
