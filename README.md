@@ -351,8 +351,8 @@ class CashInVM : INotifyPropertyChanged { …
 
 # Ссылки для дополнительного изучения
 
-[Matanit: Команды и взаимодействие с пользователем в MVVM. 2021](https://metanit.com/sharp/xamarin/4.3.php)
-[Habr: MVVM: полное понимание (+WPF). 2017](https://habr.com/ru/post/338518/)
+* [Matanit: Команды и взаимодействие с пользователем в MVVM. 2021](https://metanit.com/sharp/xamarin/4.3.php)
+* [Habr: MVVM: полное понимание (+WPF). 2017](https://habr.com/ru/post/338518/)
 	
 В 2016 году на Metanit вышла статья [Команды в MVVM](https://metanit.com/sharp/wpf/22.3.php). Предлагаемое в статье решение предлагает использовать специализированный класс **RelayCommand** (командный переключатель), который реализует поведение методов CanExecute() и Execute(), а также обработчика событий CanExecuteChanged(). Реализация класса следующая:
 	
