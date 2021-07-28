@@ -416,7 +416,7 @@ public class ApplicationViewModel : INotifyPropertyChanged
 	
 В простейшем случае, вариант от Metanit-а и приведённый в данном репозитации результат приводят к одинаковому результату. На мой взгляд, вариант с Metanit-а менее гибкий, т.к. реализовать уникальное поведение CanExecute(), Execute() и CanExecuteChanged() нельзя - это поведение жёстко «забито гвоздями» в реализации RelayCommand. Например, если потребуется сделать команду доступной по условию, то в варианте от Metanit изменить поведение поведение в CanExecute() нельзя, т.к. оно общее для всех команд. Потребуется передавать свойство enabled/disabled через дополнительный атрибут XAML-элемента (см. CommandParameter):
 
-```csharp
+```xaml
 <Button Grid.Column="1" Grid.Row="0" Content="Start Cash In" Command="{Binding FillCommand}" CommandParameter="{Binding EnteredValue}" />
 ```
 	
