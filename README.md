@@ -72,7 +72,7 @@ public MainWindow()
 
 Ниже приведён пример XAML-верстки:
 
-```xaml
+``` xml
 <UserControl x:Class="BanknotesMVVM.Views.BanknotesView" ...
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
@@ -93,7 +93,7 @@ public MainWindow()
 
 Этот UserControl может быть включен в соответствующее окно. Например, в главное окно приложения:
 
-```xaml
+```xml
 <Window x:Class="BanknotesMVVM.MainWindow" ...
 		xmlns:uc="clr-namespace:BanknotesMVVM.Views"
 		Title="MainWindow" Height="450" Width="800">
@@ -136,14 +136,14 @@ namespace BanknotesMVVM.ViewModel {
 
 Для того, чтобы связать строку ввода, определённую в XAML на уровне View, следует добавить пространство имён ViewModel в XAML:
 
-```xaml
+```xml
 <UserControl x:Class="BanknotesMVVM.Views.BanknotesView" ...
              xmlns:vm="clr-namespace:BanknotesMVVM.ViewModel" ...>
 ```
 
-Следующий шаг – мы определяем ресурс, которым является разработанный ранее класс «CashInVM.cs» и называем его «vm»:
+Следующий шаг – мы определяем статический ресурс, которым является разработанный ранее класс «CashInVM.cs» и называем его «vm». Эта XAML эквивалентен срзданию экземпляра класса ViewModel и присваиванию его DataContext:
 
-```xaml
+```xml
 <UserControl.Resources>
 	<vm:CashInVM x:Key="vm"/>
 </UserControl.Resources>
@@ -151,13 +151,13 @@ namespace BanknotesMVVM.ViewModel {
 
 Далее необходимо указать контекст данных (DataContext) для конкретного подмножества XAML-элементов. Под контекстом данных подразумевается конкретный экземпляр класса, в котором находятся свойства, используемые для связывания (binding). Например, это можно сделать для Grid-а:
 
-```xaml
+```xml
 <Grid DataContext="{StaticResource vm}">
 ```
 
 После этого, мы можем использовать свойства класса CashInVM для операций связывания, например:
 
-```xaml
+```xml
 <Grid DataContext="{StaticResource vm}">
 	<TextBox Text="{Binding EnteredValue, Mode=TwoWay}"/>
 ```
@@ -215,11 +215,11 @@ class CashInVM : INotifyPropertyChanged {
 	}
 ```
   
-Заметим, что экземпляр команды (instance) создаётся в конструкторе ViewModal. Этот подход позволяет использовать фабрику команд, основываясь, например, на конфигурационных файлах. Предположим, что в разрабатываемом приложении должна быть реализована функция экспорта данных в Excel-таблицу, но для разных заказчиков формат таблицы является разным. В зависимости от настроек системы, в конструкторе будет создаваться экземпляр соответствующей команды экспорта в Excel.
+Заметим, что экземпляр команды (_instance_) создаётся в конструкторе ViewModal. Этот подход позволяет использовать фабрику команд, основываясь, например, на конфигурационных файлах. Предположим, что в разрабатываемом приложении должна быть реализована функция экспорта данных в Excel-таблицу, но для разных заказчиков формат таблицы является разным. В зависимости от настроек системы, в конструкторе будет создаваться экземпляр соответствующей команды экспорта в Excel.
 
 После того, как экземпляр команды создан в ViewModel, можно использовать её в XAML-коде View:
 
-```xaml
+```xml
 <Button Grid.Column="1" Grid.Row="0" Content="Start Cash In"
 	Command="{Binding FillCommand}" />
 ```
@@ -263,14 +263,14 @@ public bool CanExecute(object parameter) {
 
 Чтобы не возникло исключение, проверяемые значения следует передавать через параметр вызова в CanExecute(). Для этого следует соответствующим образом настроить XAML-команду:
 
-```xaml
+```xml
 <Button Grid.Column="1" Grid.Row="0" Content="Start Cash In"
 	Command="{Binding FillCommand}" CommandParameter="{Binding EnteredValue}" />
 ```
 
 Ещё одно важное замечание – в случае использования CanExecute(), рекомендуется обновлять значение свойства EnteredValue по событию PropertyChanged:
 
-```xaml
+```xml
 <TextBox Grid.Column="0" Grid.Row="0" Margin="0,0,0,10"
 	 Text="{Binding EnteredValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 ```
@@ -325,7 +325,7 @@ public void GenerateData() {
 
 Следующим действием следует создать во View список для отображения результатов и описать шаблон оформления отдельной записи:
 
-```xaml
+```xml
 <ListView Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
 		  ItemsSource="{Binding Batch}" SelectedValue="{Binding SelectedNotes}">
 	<ListView.ItemTemplate>
@@ -447,7 +447,7 @@ public class ApplicationViewModel : INotifyPropertyChanged
 	
 В простейшем случае, вариант от Metanit-а и реализованный в данном репозитации, приводят к одинаковому результату. На мой взгляд, вариант с Metanit-а хуже по двум причинам: он приводит к захламлению кода ViewModal по мере добавления новых команд, а также он менее гибкий. Низкая гибкость состоит в том, что в варианте от Matinit-а реализовать уникальное поведение CanExecute(), Execute() и CanExecuteChanged() нельзя - оно уже жёстко определено в реализации RelayCommand. Например, если потребуется сделать команду доступной по условию, то в варианте от Metanit изменить поведение поведение в CanExecute() нельзя, т.к. оно общее для всех команд. Потребуется передавать свойство enabled/disabled через дополнительный атрибут XAML-элемента (см. CommandParameter):
 
-```xaml
+```xml
 <Button Grid.Column="1" Grid.Row="0" Content="Start Cash In" 
 	Command="{Binding FillCommand}" CommandParameter="{Binding EnteredValue}" />
 ```
@@ -463,6 +463,6 @@ public bool CanExecute(object parameter)
 
 Фактически, во ViewModel должен быть определен атрибут (один), который будет принимать логическое значение (true/false). В большинстве случаев этого хватит для реализации требований заказчиков, но когда не хватит, потребуется создавать вычисляемое свойство.
 
-Резюмируя – в простейшем случае, решение от Метанита будет работать, но также будет провоцировать создание костылей, которые нужно будет делать очень аккуратно. По сути, разработчики примера с Метанита заявили, что создание отдельных методов CanExecute(), Execute() и CanExecuteChanged() не нужно, можно обойтись только одним функтором. Это смелое заявление, т.е. репутация Metanit не такого же порядка, как репутация Microsoft.
+Резюмируя – в простейшем случае, "решение от Метанита" будет работать, но также будет провоцировать создание костылей, которые нужно будет делать очень аккуратно. По сути, разработчики примера с Метанита заявили, что создание отдельных методов CanExecute(), Execute() и CanExecuteChanged() не нужно, можно обойтись только одним функтором. Это смелое заявление, т.е. репутация Metanit не такого же порядка, как репутация Microsoft.
 	
-И ещё одно замечание – чтобы полноценно использовать решение Metanit нужно весьма хорошо знать WPF, в частности, понимать, зачем нужен атрибут CommandParameter.
+И ещё одно замечание – чтобы полноценно использовать "решение Metanit" нужно весьма хорошо знать WPF, в частности, понимать, зачем нужен атрибут CommandParameter.
